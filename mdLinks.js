@@ -1,33 +1,42 @@
 const { isAbsolute } = require('path');
 const path = require('path');
 const { argv } = require('process');
+const fsp = require("fs").promises;
 const fs = require("fs");
 const FileHound = require('filehound');
 
-// print process.argv
-let savePath = '';
-let convertedPath = '';
-//Función que recibe el parámetro de ruta
-const userPath = () => {
-  savePath = process.argv[2];
-  console.log(`Esta es la dirección entregada por el usuario: `, savePath);
-};
-userPath();
-//Función que reconoce si la ruta es absoluta o no
-const absolutePath = () => {
-  if (isAbsolute(savePath) === true) {
-    convertedPath = savePath;
-    console.log('isAbslute');
-  } else {
-    convertedPath = path.resolve(savePath);
-    console.log(`Esta es la dirección convertida: ` , convertedPath);
-  }
-  return convertedPath;
+let savePath = process.argv[2];
+savePath = path.resolve(savePath);
+console.log('La ruta absoluta es: ', savePath);
+
+const mdLinks = (path) => {
+  isFile(savePath)
+    .then(response=> {
+      if(response === true){
+        return isMd(path);
+      }
+    })
+    .catch(console.log)
+    .then(response => {
+      console.log(response);
+    });
 }
-absolutePath();
-//FUnción que lee el archivo de la ruta y saca los links
-const readingFIle = () => {
-  fs.promises.readFile(convertedPath, 'utf-8')
+
+const isFile = (path) => new Promise((resolve, reject) => {
+  console.log(path);
+  fs.stat(path, (error, stats) => {
+    if(error){
+      reject(error);
+    }else{
+      resolve(stats.isFile());
+    }
+  })
+})
+
+const isMd = (file) => path.extname(file) === '.md';
+
+const readingFile = (paths) => {
+  fsp.readFile(paths, 'utf-8')
     .then(function (result) {
       console.log("Leyendo el archivo " + result);
     })
@@ -35,26 +44,19 @@ const readingFIle = () => {
       console.log(error);
     })
 }
-//Función para leer directorio con librería FileHound
-const readingDir = () => {
+
+const readingDir = (paths) => {
   const files = FileHound.create()
-    .paths(convertedPath)
+    .paths(paths)
     .ext('md')
     .find();
 
   files.then(console.log);
 }
-//Función que determina si la ruta es de un archivo o un directorio
-fs.lstat(convertedPath, (err, stats) => {
-  if (err) {
-    return console.log(err); //Handle error
-  }else if (stats.isFile()){
-    console.log(`Es un archivo`);
-    readingFIle();
-  }else{
-    console.log(`Es un directorio`);
-    readingDir();
-  }
-});
-/* CREAR FUNCIÓN MD LINKS QUE SEA LA CONTENEDORA DE TODOS LOS PASOS, USAR FS.LSTATS CON PROMISES, SE PUEDE REUTILIZAR LA FUNCIÓN READINGFILE PARA LA LECTURA DE 
-CADA UNO DE LOS ARCHIVOS DEL DIRECTORIO */
+
+
+mdLinks();
+
+module.exports = {
+  mdLinks
+}
